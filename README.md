@@ -1,4 +1,4 @@
-#Célula de Manufatura - Sistemas em Tempo Real (STR)
+##Célula de Manufatura - Sistemas em Tempo Real (STR)
 
 Este projeto implementa a simulação de uma Célula de Manufatura Automatizada utilizando linguagem C e a biblioteca POSIX Threads (pthread). O objetivo é demonstrar conceitos avançados de computação concorrente, como exclusão mútua, sincronização de tarefas e gerenciamento de buffers compartilhados em um ambiente de missão crítica.
 🏗️ Arquitetura do Sistema
