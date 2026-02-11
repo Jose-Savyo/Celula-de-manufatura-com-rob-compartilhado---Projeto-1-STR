@@ -1,54 +1,47 @@
-##Célula de Manufatura - Sistemas em Tempo Real (STR)
+Célula de Manufatura - Sistemas em Tempo Real (STR)
+Descrição do Projeto
 
-Este projeto implementa a simulação de uma Célula de Manufatura Automatizada utilizando linguagem C e a biblioteca POSIX Threads (pthread). O objetivo é demonstrar conceitos avançados de computação concorrente, como exclusão mútua, sincronização de tarefas e gerenciamento de buffers compartilhados em um ambiente de missão crítica.
-🏗️ Arquitetura do Sistema
+Este projeto consiste na simulação de uma célula de manufatura automatizada desenvolvida em linguagem C, utilizando a biblioteca POSIX Threads (pthread) para o gerenciamento de concorrência. O sistema modela o comportamento de duas máquinas de processamento, um robô de transporte e um agente de logística externo, focando na sincronização de tarefas e na integridade de recursos compartilhados em ambiente de tempo real.
+Arquitetura de Software
 
-O sistema é composto por quatro agentes principais que interagem de forma assíncrona:
-Componente	Função	Lógica de Tempo
-Máquinas (M1 e M2)	Processam peças e sinalizam prontidão via sensores lógicos.	Variável (rand() % 3 + 1).
-Robô (Coordenador)	Gerencia o transporte entre as máquinas e a esteira de saída (buffer).	Sequencial com prioridade para M1.
-Buffer (Esteira)	Armazenamento temporário com capacidade limitada (2 posições).	Fila Circular (FIFO).
-Agente Externo	Consome os itens finalizados, liberando espaço no fluxo produtivo.	Intermitente (rand() % 5 + 5).
-🛠️ Mecanismos de Sincronização
+O sistema é composto por quatro agentes independentes que operam em paralelo:
 
-A integridade dos dados e o controle do fluxo físico são garantidos por semáforos e exclusão mútua:
+    Máquinas (M1 e M2): Atuam como produtores primários, executando tarefas de processamento com tempos variáveis simulados por rand().
 
-    mutex_buffer: Garante que apenas um agente (Robô ou Externo) acesse o buffer por vez, evitando condições de corrida.
+    Robô de Transporte: Atua como o elemento de coordenação central, responsável por coletar peças finalizadas e depositá-las em um buffer de saída.
 
-    vazio_buffer / cheio_buffer: Controlam a ocupação da esteira, bloqueando o Robô se estiver cheia ou o Agente se estiver vazia.
+    Buffer de Saída (Esteira): Estrutura de dados do tipo fila circular (FIFO) com capacidade limitada a 2 posições.
 
-    sinal_robo: Implementa a espera passiva do Robô, economizando CPU enquanto não há chamados das máquinas.
+    Agente Externo: Atua como o consumidor final, removendo peças do buffer para permitir a continuidade do fluxo produtivo e evitar deadlocks por transbordamento de buffer.
 
-🚀 Como Executar
-Pré-requisitos
+Mecanismos de Sincronização e Controle
 
-    Compilador GCC.
+Para garantir o determinismo e evitar condições de corrida (Race Conditions), foram implementadas as seguintes primitivas de sincronização:
 
-    Ambiente Linux ou WSL (Windows Subsystem for Linux).
+    Exclusão Mútua (Mutex): Utilizado para proteger o acesso às variáveis de índice do buffer (in e out).
 
+    Semáforos de Condição (vazio_buffer e cheio_buffer): Controlam a ocupação do buffer, garantindo que o robô não deposite peças em uma esteira cheia e que o agente externo não tente coletar de uma esteira vazia.
+
+    Semáforo de Evento (sinal_robo): Implementa a espera passiva do robô, que permanece em estado de suspensão até que uma sinalização de "fim de processo" seja emitida por uma das máquinas.
+
+Lógica de Gerenciamento de Fila
+
+A retirada de peças segue rigorosamente a ordem de chegada, implementada através de aritmética modular para o gerenciamento de ponteiros no buffer circular:
+out=(out+1)(modBUFFER_SIZE)
+Instruções de Build e Execução
 Compilação
 
-O projeto utiliza um Makefile para automatizar o build com as flags de otimização e a biblioteca de threads:
+O projeto utiliza um Makefile para gerenciar as dependências e garantir a inclusão das flags -Wall e -pthread durante o processo de build:
 Bash
 
 make
 
-Execução
-Bash
+Execução e Monitoramento
 
-./celula_manufatura
+Para validar o escalonamento das threads e o consumo de recursos, recomenda-se o uso da ferramenta htop durante a execução:
 
-📊 Monitoramento em Tempo Real
+    Execute o binário: ./celula_manufatura.
 
-O projeto foi desenvolvido para ser monitorado via htop. Graças à implementação de pthread_setname_np, é possível observar o estado de cada thread individualmente:
+    No htop, utilize o filtro (F4) para localizar o processo.
 
-    Abra o htop.
-
-    Pressione F4 e filtre por celula.
-
-    Pressione F5 para o modo árvore.
-
-    Observe as threads Maquina_1, Maquina_2, Robo e Agente_Ext transitando entre os estados de execução e espera.
-
-    Nota Técnica: A lógica de retirada do buffer utiliza a operação matemática de módulo para garantir a persistência da fila:
-    out=(out+1)(modBUFFER_SIZE)
+    Verifique os estados das threads (S para Sleeping e R para Running) e as nomenclaturas definidas via pthread_setname_np para cada componente da célula.
