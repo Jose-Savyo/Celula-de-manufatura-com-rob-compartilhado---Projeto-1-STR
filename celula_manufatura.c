@@ -9,13 +9,13 @@
 #define BUFFER_SIZE 2      // Capacidade da esteira de saída
 #define NUM_MAQUINAS 2     // M1 e M2
 
-// Recursos do Buffer (Seguindo seu modelo de produtor_consumidor.c)
+// Recursos do Buffer (Seguindo o exemplo produtor_consumidor.c)
 int buffer[BUFFER_SIZE];
 int in = 0, out = 0;
 
 // Semáforos e Mutex
 sem_t mutex_buffer, cheio_buffer, vazio_buffer;
-sem_t sinal_robo;          // Semáforo para acordar o robô
+sem_t sinal_robo;          // Semáforo para "acordar" o robô
 
 // Sensores das máquinas (0: vazia, 1: com peça pronta)
 int peca_na_maquina[NUM_MAQUINAS + 1];
@@ -24,7 +24,8 @@ void *task_maquina(void *arg) {
     int id = *(int *)arg;
     char nome[20];
     sprintf(nome, "Maquina_%d", id);
-    pthread_setname_np(pthread_self(), nome); // Visibilidade no htop
+    // Define o nome da task
+    pthread_setname_np(pthread_self(), nome);
 
     while (1) {
         printf("[M%d] Iniciando processamento...\n", id); // A titulo de testes
@@ -45,6 +46,7 @@ void *task_maquina(void *arg) {
 }
 
 void *task_robo(void *arg) {
+    // Define o nome da task
     pthread_setname_np(pthread_self(), "Robo");
 
     while (1) {
@@ -74,17 +76,14 @@ void *task_robo(void *arg) {
         sem_post(&cheio_buffer); // Sinaliza para o Agente Externo
         printf("[ROBÔ] Peça da M%d entregue no buffer. Voltando para posição de repouso.\n", id_alvo);
         
-        // Somente aqui, ao chegar no fim do while, ele poderá atender um novo sinal_robo.
     }
 }
 
 void *task_agente_externo(void *arg) {
-    // Define o nome para identificação clara no seu htop
+    // Define o nome da task
     pthread_setname_np(pthread_self(), "Agente_Ext");
 
     while (1) {
-        // O agente externo não está na célula o tempo todo. 
-        // Ele "passa" para coletar as peças em intervalos (ex: a cada 8 segundos)
         sleep(rand() % 5 + 5); 
 
         printf("[EXTERNO] Cheguei na célula. Verificando peças na esteira...\n");
@@ -98,6 +97,11 @@ void *task_agente_externo(void *arg) {
         int item = buffer[out];
         printf("[EXTERNO] Coletando peça da M%d...\n", item);
         out = (out + 1) % BUFFER_SIZE; // Garante que o agente externo pegue a peça que chegou primeiro
+        /*
+        Operação para verificar o resto da divsão
+        (0 + 1) % 2 = 1
+        (1 + 1) % 2 = 0
+        */
         
         sem_post(&mutex_buffer);
 
@@ -110,7 +114,7 @@ void *task_agente_externo(void *arg) {
 }
 
 int main() {
-    srand(time(NULL)); // Semente para os tempos aleatórios
+    srand(time(NULL));
 
     // 1. Inicialização dos Semáforos
     sem_init(&mutex_buffer, 0, 1);
@@ -132,15 +136,13 @@ int main() {
     pthread_create(&t_robo, NULL, task_robo, NULL);
     pthread_create(&t_externo, NULL, task_agente_externo, NULL);
 
-    // 4. Aguardar as threads (Join)
-    // Em sistemas de tempo real, elas rodam para sempre, então o join as manterá vivas.
+    // 4. Aguardar as threads
     for (int i = 0; i < NUM_MAQUINAS; i++) {
         pthread_join(maquinas[i], NULL);
     }
     pthread_join(t_robo, NULL);
     pthread_join(t_externo, NULL);
 
-    // 5. Limpeza (Só acontece se o programa for encerrado)
     sem_destroy(&mutex_buffer);
     sem_destroy(&cheio_buffer);
     sem_destroy(&vazio_buffer);
