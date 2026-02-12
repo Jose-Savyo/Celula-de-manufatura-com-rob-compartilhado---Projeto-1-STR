@@ -1,39 +1,189 @@
-# 🏭 Célula de Manufatura - Sistemas em Tempo Real (STR)
+# 🏭 Célula de Manufatura — Sistemas em Tempo Real (STR)
 
-## 📝 Descrição do Projeto
-[cite_start]Este projeto consiste na simulação de uma célula de manufatura automatizada desenvolvida em **Linguagem C**, utilizando a biblioteca **POSIX Threads (pthread)** para o gerenciamento de concorrência. [cite_start]O sistema modela o comportamento de duas máquinas de processamento, um robô de transporte e um agente de logística externo, focando na sincronização de tarefas e na integridade de recursos compartilhados em ambiente de tempo real.
+## 📖 Descrição do Projeto
+
+Este projeto consiste na **simulação de uma célula de manufatura automatizada** desenvolvida em linguagem **C**, utilizando a biblioteca **POSIX Threads (pthread)** para gerenciamento de concorrência.
+
+O sistema modela o comportamento de:
+
+* Duas máquinas de processamento
+* Um robô de transporte
+* Um agente de logística externo
+
+O foco principal está na **sincronização de tarefas**, **compartilhamento seguro de recursos** e no comportamento de sistemas concorrentes em **ambiente de tempo real**.
 
 ---
 
-## 🏗️ Arquitetura de Software
-O sistema é composto por quatro agentes independentes que operam em paralelo:
+## 🧠 Arquitetura de Software
 
-* [cite_start]**Máquinas (M1 e M2):** Atuam como produtores primários, executando tarefas de processamento com tempos variáveis simulados por `rand()`.
-* [cite_start]**Robô de Transporte:** Atua como o elemento de coordenação central, responsável por coletar peças finalizadas e depositá-las em um buffer de saída.
-* [cite_start]**Buffer de Saída (Esteira):** Estrutura de dados do tipo fila circular (FIFO) com capacidade limitada a 2 posições.
-* [cite_start]**Agente Externo:** Atua como o consumidor final, removendo peças do buffer para permitir a continuidade do fluxo produtivo e evitar deadlocks por transbordamento de buffer.
+O sistema é composto por **quatro agentes independentes**, executados em paralelo por meio de threads:
+
+### 🔧 Máquinas (M1 e M2)
+
+* Atuam como **produtores primários**.
+* Executam tarefas de processamento com tempos variáveis.
+* Os tempos são simulados utilizando a função `rand()`.
+
+### 🤖 Robô de Transporte
+
+* Atua como **coordenador central** do fluxo produtivo.
+* Responsável por:
+
+  * Coletar peças finalizadas das máquinas.
+  * Transportá-las até o buffer de saída.
+
+### 📦 Buffer de Saída (Esteira)
+
+* Estrutura de dados do tipo **fila circular (FIFO)**.
+* Capacidade limitada a **2 posições**.
+* Controla o fluxo entre produção e consumo.
+
+### 🚚 Agente Externo
+
+* Atua como **consumidor final**.
+* Remove peças do buffer para:
+
+  * Liberar espaço.
+  * Evitar deadlocks por transbordamento.
 
 ---
 
 ## 🔐 Mecanismos de Sincronização e Controle
-[cite_start]Para garantir o determinismo e evitar condições de corrida (*Race Conditions*), foram implementadas as seguintes primitivas de sincronização:
 
-| Primitiva | Variável no Código | Função |
-| :--- | :--- | :--- |
-| **Exclusão Mútua** | `mutex_buffer` | [cite_start]Protege o acesso exclusivo às variáveis de índice do buffer (`in` e `out`). |
-| **Semáforos de Condição** | `vazio_buffer` e `cheio_buffer` | [cite_start]Controlam a ocupação do buffer, garantindo que o robô não deposite em esteira cheia e o agente não colete de vazia. |
-| **Semáforo de Evento** | `sinal_robo` | [cite_start]Implementa a espera passiva do robô, que permanece suspenso até o fim de um processo de máquina. |
+Para garantir **determinismo** e evitar **Race Conditions**, foram utilizadas as seguintes primitivas:
 
-### Lógica de Gerenciamento de Fila
-[cite_start]A retirada de peças segue rigorosamente a ordem de chegada, implementada através de aritmética modular para o gerenciamento de ponteiros no buffer circular:
-$$out = (out + 1) \pmod{BUFFER\_SIZE}$$
+### 🔒 Mutex (Exclusão Mútua)
+
+Protege o acesso às variáveis críticas do buffer:
+
+* Índice de entrada (`in`)
+* Índice de saída (`out`)
+
+---
+
+### 🚦 Semáforos de Condição
+
+* **`vazio_buffer`** → Controla espaços livres no buffer.
+* **`cheio_buffer`** → Controla a quantidade de peças disponíveis.
+
+Garantem que:
+
+* O robô **não deposite** em buffer cheio.
+* O agente externo **não remova** de buffer vazio.
+
+---
+
+### 📡 Semáforo de Evento — `sinal_robo`
+
+Implementa a **espera passiva do robô**:
+
+* O robô permanece suspenso.
+* Só é ativado quando uma máquina sinaliza **fim de processamento**.
+
+Isso evita polling e desperdício de CPU.
+
+---
+
+## 🔄 Lógica de Gerenciamento de Fila
+
+A retirada de peças segue rigorosamente a **ordem de chegada (FIFO)**.
+
+O controle é feito com **aritmética modular** no buffer circular:
+
+```c
+out = (out + 1) % BUFFER_SIZE;
+```
+
+Isso permite:
+
+* Reutilização das posições
+* Controle eficiente de memória
+* Fluxo contínuo de produção
 
 ---
 
 ## 🛠️ Instruções de Build e Execução
 
-### Compilação
-[cite_start]O projeto utiliza um **Makefile** para gerenciar as dependências e garantir a inclusão das flags `-Wall` e `-pthread`[cite: 6, 7]:
+### 📦 Compilação
+
+O projeto utiliza **Makefile** para automação do build, incluindo as flags:
+
+* `-Wall` → Exibição de warnings
+* `-pthread` → Suporte a threads POSIX
+
+Execute:
 
 ```bash
 make
+```
+
+---
+
+### ▶️ Execução
+
+Após compilar:
+
+```bash
+./celula_manufatura
+```
+
+---
+
+## 📊 Monitoramento das Threads
+
+Para análise de escalonamento e estados das threads, utilize o **htop**:
+
+### Passos:
+
+1. Execute o programa:
+
+   ```bash
+   ./celula_manufatura
+   ```
+
+2. Abra o htop:
+
+   ```bash
+   htop
+   ```
+
+3. Pressione **F4** e filtre pelo nome do processo.
+
+4. Observe os estados:
+
+* **S** → Sleeping
+* **R** → Running
+
+As threads são nomeadas via:
+
+```c
+pthread_setname_np();
+```
+
+---
+
+## 🎯 Objetivos Acadêmicos
+
+Este projeto demonstra na prática:
+
+* Sincronização entre múltiplas threads
+* Problema Produtor × Consumidor
+* Uso de semáforos e mutex
+* Gerenciamento de buffer circular
+* Coordenação de sistemas concorrentes em tempo real
+
+---
+
+## 📚 Tecnologias Utilizadas
+
+* Linguagem **C**
+* **POSIX Threads (pthread)**
+* **Semáforos POSIX**
+* Ambiente **Linux**
+* **Makefile**
+
+---
+
+## 👨‍💻 Autor
+
+Desenvolvido para a disciplina de **Sistemas em Tempo Real (STR)**.
